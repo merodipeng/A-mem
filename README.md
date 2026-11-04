@@ -1,21 +1,24 @@
-> ⚠️ **Reproducibility Note (Added by [merodipeng]):**
+> ⚠️ **Reproducibility Note (Added by merodipeng):**
 > This repository was used for the FTEC5660 Reproducibility Assignment.
-> To reproduce the pipeline using **DeepSeek** instead of OpenAI (due to old model deprecation), the `test_advanced_robust.py` script was executed with the following environment variables configured in Google Colab:
 > 
+> **1. LLM Backend Swap (Edge Case A):**
+> To reproduce the pipeline using **DeepSeek** instead of OpenAI (due to old model deprecation), we utilized the existing `test_advanced_robust.py` script without changing its core logic, by setting the following environment variables in Google Colab:
 > ```python
 > import os
-> os.environ["OPENAI_API_KEY"] = "your_deepseek_api_key"
+> from google.colab import userdata
+> os.environ["OPENAI_API_KEY"] = userdata.get("DEEPSEEK_API_KEY")
 > os.environ["OPENAI_BASE_URL"] = "https://api.deepseek.com"
 > ```
 > 
+> **2. Modification (Timeout Prevention):**
+> Because building the memory cache for the full conversation timed out (due to heavy API serial calls), we modified **`load_dataset.py`** to add a hard slicing guard. This limits the evaluation to the first sample and the first 10 questions (`if qa_idx >= 10: break`), ensuring the evaluation script can complete within the compute budget.
+> 
 > **Run command used:**
 > ```bash
-> python test_advanced_robust.py --backend openai --model deepseek-chat --dataset data/locomo10.json --ratio 0.01 --output results_deepseek.json
+> python test_advanced_robust.py --backend openai --model deepseek-chat --dataset data/locomo10.json --output test_final.json
 > ```
 > 
 > *Note: The API key is loaded via Colab Secrets and is NOT hardcoded in any script.*
-
----
 
 
 # Agentic Memory 🧠
