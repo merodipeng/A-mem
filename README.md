@@ -1,3 +1,23 @@
+> ⚠️ **Reproducibility Note (Added by [merodipeng]):**
+> This repository was used for the FTEC5660 Reproducibility Assignment.
+> To reproduce the pipeline using **DeepSeek** instead of OpenAI (due to old model deprecation), the `test_advanced_robust.py` script was executed with the following environment variables configured in Google Colab:
+> 
+> ```python
+> import os
+> os.environ["OPENAI_API_KEY"] = "your_deepseek_api_key"
+> os.environ["OPENAI_BASE_URL"] = "https://api.deepseek.com"
+> ```
+> 
+> **Run command used:**
+> ```bash
+> python test_advanced_robust.py --backend openai --model deepseek-chat --dataset data/locomo10.json --ratio 0.01 --output results_deepseek.json
+> ```
+> 
+> *Note: The API key is loaded via Colab Secrets and is NOT hardcoded in any script.*
+
+---
+
+
 # Agentic Memory 🧠
 
 A novel agentic memory system for LLM agents that can dynamically organize memories in an agentic way.
