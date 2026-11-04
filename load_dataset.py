@@ -133,6 +133,7 @@ def load_locomo_dataset(file_path: Union[str, Path]) -> List[LoCoMoSample]:
     qa_counts_per_sample = []
     
     for sample_idx, sample in enumerate(data):
+        if sample_idx >= 1: break
         try:
             # Parse QA data
             qa_list = []
@@ -140,6 +141,7 @@ def load_locomo_dataset(file_path: Union[str, Path]) -> List[LoCoMoSample]:
             sample_image_qa_count = 0
             
             for qa_idx, qa in enumerate(sample["qa"]):
+                if qa_idx >= 10: break
                 try:
                     # Check if QA has image evidence
                     has_image_evidence = False
