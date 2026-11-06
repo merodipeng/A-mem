@@ -10,15 +10,19 @@
 > os.environ["OPENAI_BASE_URL"] = "https://api.deepseek.com"
 > ```
 > 
-> **2. Modification (Timeout Prevention):**
-> Because building the memory cache for the full conversation timed out (due to heavy API serial calls), we modified **`load_dataset.py`** to add a hard slicing guard. This limits the evaluation to the first sample and the first 10 questions (`if qa_idx >= 10: break`), ensuring the evaluation script can complete within the compute budget.
+> **2. Scoped evaluation and resumable construction:**
+> The scoped evaluation keeps the first three complete sessions of the first LoCoMo sample: 58 memory turns and the original first ten questions, whose annotated evidence is retained. Limits are configurable, and memory construction saves atomic checkpoints every ten completed turns. This reduces the workload and permits resuming interrupted construction; actual runtime and accuracy must be measured.
 > 
-> **Run command used:**
+> **Suggested scoped run:**
 > ```bash
-> python test_advanced_robust.py --backend openai --model deepseek-chat --dataset data/locomo10.json --output test_final.json
+> python test_advanced_robust.py --backend openai --model deepseek-chat --dataset data/locomo10.json --max_samples 1 --max_sessions 3 --max_questions 10 --retrieve_k 10 --checkpoint_every 10 --output results/fast58/k10_trial1.json
 > ```
 > 
 > *Note: The API key is loaded via Colab Secrets and is NOT hardcoded in any script.*
+>
+> **Target and measured modification:** Verify the memory-based QA pipeline on this fixed subset, then change only `retrieve_k` from 10 to 5. Run 3–5 trials per setting and report F1, BLEU-1, and QA time with mean/standard deviation across runs. The robust memory method, parsers, and scorers are inherited from upstream.
+>
+> **Status and limitations:** Local structural checks are available; real DeepSeek results and modification impact have not been supplied. Shortened history and a different LLM mean these results are not directly comparable to the paper's full LoCoMo evaluation. Do not claim a successful reproduction without measured outputs.
 
 
 # Agentic Memory 🧠
