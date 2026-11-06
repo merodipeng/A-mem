@@ -105,7 +105,8 @@ class RobustOpenAIController(RobustBaseLLMController):
             api_key = os.getenv('OPENAI_API_KEY')
         if api_key is None:
             raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY environment variable.")
-        self.client = OpenAI(api_key=api_key)
+        # The retry decorator owns retries; avoid multiplying them with SDK retries.
+        self.client = OpenAI(api_key=api_key, timeout=60.0, max_retries=0)
 
     @retry_llm_call(max_retries=2)
     def get_completion(self, prompt: str, temperature: float = 0.7) -> str:

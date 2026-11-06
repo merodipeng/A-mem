@@ -20,6 +20,7 @@ from sentence_transformers.util import pytorch_cos_sim
 # Download required NLTK data
 try:
     nltk.download('punkt', quiet=True)
+    nltk.download('punkt_tab', quiet=True)
     nltk.download('wordnet', quiet=True)
 except Exception as e:
     print(f"Error downloading NLTK data: {e}")
