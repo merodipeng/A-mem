@@ -68,6 +68,7 @@ class LoCoMoSample:
     event_summary: EventSummary
     observation: Observation
     session_summary: Dict[str, str]
+    source_qa_indices: Optional[List[int]] = None
 
 def parse_session(session_data: List[dict], session_id: int, date_time: str) -> Session:
     """Parse a single session's data, including turns with images by using their captions."""
@@ -89,10 +90,16 @@ def parse_session(session_data: List[dict], session_id: int, date_time: str) -> 
         ))
     return Session(session_id=session_id, date_time=date_time, turns=turns)
 
-def parse_conversation(conv_data: dict) -> Conversation:
+def parse_conversation(conv_data: dict, max_sessions: Optional[int] = None) -> Conversation:
     """Parse conversation data."""
     sessions = {}
-    for key, value in conv_data.items():
+    session_keys = sorted(
+        (key for key, value in conv_data.items()
+         if key.startswith('session_') and isinstance(value, list)),
+        key=lambda key: int(key.split('_')[1]),
+    )
+    for key in session_keys[:max_sessions]:
+        value = conv_data[key]
         if key.startswith("session_") and isinstance(value, list):
             session_id = int(key.split("_")[1])
             date_time = conv_data.get(f"{key}_date_time")
@@ -108,16 +115,25 @@ def parse_conversation(conv_data: dict) -> Conversation:
         sessions=sessions
     )
 
-def load_locomo_dataset(file_path: Union[str, Path]) -> List[LoCoMoSample]:
+def load_locomo_dataset(file_path: Union[str, Path], max_samples: Optional[int] = None,
+                        max_questions: Optional[int] = None,
+                        max_sessions: Optional[int] = None) -> List[LoCoMoSample]:
     """
     Load the LoComo dataset from a JSON file, including image-based content by using captions.
     
     Args:
         file_path: Path to the JSON file containing the dataset
+        max_samples: Maximum number of conversations; None loads all.
+        max_questions: Maximum questions per conversation; None loads all.
+        max_sessions: Chronological session prefix; keep only QAs with contained evidence.
         
     Returns:
         List of LoCoMoSample objects containing the parsed data
     """
+    for name, limit in (("max_samples", max_samples), ("max_questions", max_questions), ("max_sessions", max_sessions)):
+        if limit is not None and limit <= 0:
+            raise ValueError(f"{name} must be positive or None")
+
     if isinstance(file_path, str):
         file_path = Path(file_path)
         
@@ -133,15 +149,28 @@ def load_locomo_dataset(file_path: Union[str, Path]) -> List[LoCoMoSample]:
     qa_counts_per_sample = []
     
     for sample_idx, sample in enumerate(data):
-        if sample_idx >= 1: break
+        if max_samples is not None and sample_idx >= max_samples:
+            break
         try:
+            # Choose the history before selecting supported questions.
+            conversation = parse_conversation(sample['conversation'], max_sessions)
+            retained_ids = {turn.dia_id for session in conversation.sessions.values()
+                            for turn in session.turns}
             # Parse QA data
             qa_list = []
+            source_qa_indices = []
             sample_qa_count = 0
             sample_image_qa_count = 0
             
             for qa_idx, qa in enumerate(sample["qa"]):
-                if qa_idx >= 10: break
+                if max_sessions is not None:
+                    # All evidence must fit the fixed history; no answer-based retrieval hints.
+                    if (qa.get('category') not in (1, 2, 3, 4) or qa.get('answer') is None
+                            or not qa.get('evidence')
+                            or not set(qa['evidence']).issubset(retained_ids)):
+                        continue
+                if max_questions is not None and len(qa_list) >= max_questions:
+                    break
                 try:
                     # Check if QA has image evidence
                     has_image_evidence = False
@@ -168,6 +197,7 @@ def load_locomo_dataset(file_path: Union[str, Path]) -> List[LoCoMoSample]:
                         adversarial_answer=qa.get("adversarial_answer")
                     )
                     qa_list.append(qa_obj)
+                    source_qa_indices.append(qa_idx)
                     sample_qa_count += 1
                     
                 except KeyError as e:
@@ -179,8 +209,7 @@ def load_locomo_dataset(file_path: Union[str, Path]) -> List[LoCoMoSample]:
                     print(f"QA data: {qa}")
                     raise e
             
-            # Parse conversation
-            conversation = parse_conversation(sample["conversation"])
+            # Conversation was selected before QA filtering.
             
             # Parse event summary
             event_summary = EventSummary(events=sample["event_summary"])
@@ -198,7 +227,8 @@ def load_locomo_dataset(file_path: Union[str, Path]) -> List[LoCoMoSample]:
                 conversation=conversation,
                 event_summary=event_summary,
                 observation=observation,
-                session_summary=session_summary
+                session_summary=session_summary,
+                source_qa_indices=source_qa_indices
             )
             samples.append(sample_obj)
             
@@ -220,9 +250,9 @@ def load_locomo_dataset(file_path: Union[str, Path]) -> List[LoCoMoSample]:
     print("\nOverall Statistics:")
     print(f"Total QAs: {total_qa}")
     print(f"Total QAs with image evidence: {total_image_qa}")
-    print(f"Average QAs per sample: {total_qa / len(samples):.2f}")
-    print(f"Min QAs in a sample: {min(qa_counts_per_sample)}")
-    print(f"Max QAs in a sample: {max(qa_counts_per_sample)}")
+    print(f"Average QAs per sample: {total_qa / len(samples) if samples else 0:.2f}")
+    print(f"Min QAs in a sample: {min(qa_counts_per_sample, default=0)}")
+    print(f"Max QAs in a sample: {max(qa_counts_per_sample, default=0)}")
     
     return samples
 
