@@ -117,7 +117,7 @@ class RobustOpenAIController(RobustBaseLLMController):
                 {"role": "user", "content": prompt}
             ],
             temperature=temperature,
-            max_tokens=8192,
+            max_tokens=8000,
             extra_body={"thinking": {"type": "enabled"}},
         )
         choice = response.choices[0]
