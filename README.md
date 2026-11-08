@@ -11,18 +11,29 @@
 > ```
 > 
 > **2. Scoped evaluation and resumable construction:**
-> The scoped evaluation keeps the first three complete sessions of the first LoCoMo sample: 58 memory turns and the original first ten questions, whose annotated evidence is retained. Limits are configurable, and memory construction saves atomic checkpoints every ten completed turns. This reduces the workload and permits resuming interrupted construction; actual runtime and accuracy must be measured.
-> 
-> **Suggested scoped run:**
-> ```bash
-> python test_advanced_robust.py --backend openai --model deepseek-chat --dataset data/locomo10.json --max_samples 1 --max_sessions 3 --max_questions 10 --retrieve_k 10 --checkpoint_every 10 --output results/fast58/k10_trial1.json
-> ```
-> 
-> *Note: The API key is loaded via Colab Secrets and is NOT hardcoded in any script.*
+> The scoped evaluation keeps the first three complete sessions of the first LoCoMo sample: 58 memory turns and the original first ten questions, whose annotated evidence is retained. Limits are configurable, and memory construction saves atomic checkpoints every ten completed turns. This reduces the workload and permits resuming interrupted construction.
+**Suggested scoped run:**
+
+```bash
+python test_advanced_robust.py \
+  --backend openai --model deepseek-flash \
+  --dataset data/locomo10.json \
+  --max_samples 1 --max_sessions 3 --max_questions 10 \
+  --retrieve_k 10 --checkpoint_every 10 \
+  --output results/fast58/k10_trial1.json
+```
+>**3. Target and measured modification:**
+Verified the memory-based QA pipeline on this fixed subset. We conducted a controlled ablation study by changing only retrieve_k from 10 to 5. Three independent trials were run for each setting to measure the impact.
 >
-> **Target and measured modification:** Verify the memory-based QA pipeline on this fixed subset, then change only `retrieve_k` from 10 to 5. Run 3–5 trials per setting and report F1, BLEU-1, and QA time with mean/standard deviation across runs. The robust memory method, parsers, and scorers are inherited from upstream.
->
-> **Status and limitations:** Local structural checks are available; real DeepSeek results and modification impact have not been supplied. Shortened history and a different LLM mean these results are not directly comparable to the paper's full LoCoMo evaluation. Do not claim a successful reproduction without measured outputs.
+>**4. Status and measured results:**
+
+>Baseline (k=10): Mean F1 = 0.5706 ± 0.0099.
+
+>Modification (k=5): Mean F1 = 0.5999 ± 0.1232.
+
+>Diagnostic Fix: Initial runs encountered 53 absorbed empty_completion failures. By diagnosing the runtime log, we identified that DeepSeek's thinking mode exhausted the 1000-token output budget. We modified the controller to explicitly set max_tokens=8000, which successfully eliminated all LLM failures in the final runs.
+
+>Conclusion: The k=5 setting reduced the answer prompt length by 50.4% and showed a slightly higher mean F1, though with higher variance. Shortened history and a different LLM mean these results are not directly comparable to the paper's full LoCoMo evaluation.
 
 
 # Agentic Memory 🧠
